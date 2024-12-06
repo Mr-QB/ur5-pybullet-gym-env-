@@ -10,7 +10,7 @@ from rl_algorithm.TD3 import TD3, ReplayBuffer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_SAVE_PATH = "./saved_models/"
-os.makedirs(MODEL_SAVE_PATH, exist_ok=True)
+# os.makedirs(MODEL_SAVE_PATH, exist_ok=False)
 
 
 def td3_trainning():
@@ -35,6 +35,7 @@ def td3_trainning():
     max_steps = 500
 
     model_filename = os.path.join(MODEL_SAVE_PATH, "td3_model.pth")
+    start_episode = 0
     if os.path.exists(model_filename):
         checkpoint = torch.load(model_filename)
         td3.actor.load_state_dict(checkpoint["actor"])
@@ -47,10 +48,10 @@ def td3_trainning():
 
     for episode in range(num_episodes):
         state = env.reset()
-        episode_reward = 0
         steps = 0
         done = False
         joint_angle = np.zeros(7)
+        episode_reward = 0
         while not done and steps < max_steps:
             action = td3.select_action(
                 torch.tensor(state, dtype=torch.float32, device=device)
@@ -76,7 +77,7 @@ def td3_trainning():
         print(f"Episode {episode}, Reward: {episode_reward}")
         if episode % 100 == 0:
             checkpoint = {
-                "episode": episode,
+                "episode": start_episode + episode,
                 "actor": td3.actor.state_dict(),
                 "critic": td3.critic.state_dict(),
                 "actor_target": td3.actor_target.state_dict(),

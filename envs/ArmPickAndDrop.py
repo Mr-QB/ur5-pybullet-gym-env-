@@ -304,12 +304,12 @@ class ArmPickAndDrop:
             reward -= 150
 
         if not self.is_object_at_position_B:
-            reward -= 0.1
+            reward -= 1
         hand_to_object_distance = self.get_hand_to_object_distance()
-        if hand_to_object_distance > 0.0025:
-            reward -= hand_to_object_distance * 0.1
+        reward += max(0, 1 / (hand_to_object_distance * 10 + 0.001))
+
         object_to_target_distance = self.get_object_to_target_distance()
-        reward -= object_to_target_distance * 0.1
+        reward += max(0, 1 / (object_to_target_distance * 10 + 0.001))
         return reward
 
     def get_hand_to_object_distance(self):
