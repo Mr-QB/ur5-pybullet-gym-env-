@@ -9,6 +9,8 @@ from helper.utilities import YCBModels, Camera
 from rl_algorithm.TD3 import TD3, ReplayBuffer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+MODEL_SAVE_PATH = "./saved_models/"
+os.makedirs(MODEL_SAVE_PATH, exist_ok=True)
 
 
 def td3_trainning():
@@ -27,21 +29,35 @@ def td3_trainning():
     action_dim = 7  # robot.get_action_space()
     max_action = 1.0
     td3 = TD3(state_dim=state_dim, action_dim=action_dim, max_action=max_action)
-    num_episodes = 1000
+    num_episodes = 100000
     replay_buffer = ReplayBuffer()
-    batch_size = 256
+    batch_size = 128
+    max_steps = 500
+
+    model_filename = os.path.join(MODEL_SAVE_PATH, "td3_model.pth")
+    if os.path.exists(model_filename):
+        checkpoint = torch.load(model_filename)
+        td3.actor.load_state_dict(checkpoint["actor"])
+        td3.critic.load_state_dict(checkpoint["critic"])
+        td3.actor_target.load_state_dict(checkpoint["actor_target"])
+        td3.critic_target.load_state_dict(checkpoint["critic_target"])
+        replay_buffer = checkpoint["replay_buffer"]
+        start_episode = checkpoint["episode"] + 1
+        print(f"Resuming training from episode {start_episode}.")
 
     for episode in range(num_episodes):
         state = env.reset()
         episode_reward = 0
+        steps = 0
         done = False
-
-        while not done:
+        joint_angle = np.zeros(7)
+        while not done and steps < max_steps:
             action = td3.select_action(
                 torch.tensor(state, dtype=torch.float32, device=device)
             )
 
             next_state, reward, done, info = env.step(action)
+            # print(reward)
             replay_buffer.add(
                 torch.tensor(state, dtype=torch.float32, device=device),
                 torch.tensor(action, dtype=torch.float32, device=device),
@@ -55,8 +71,20 @@ def td3_trainning():
 
             state = next_state
             episode_reward += reward
+            steps += 1
 
         print(f"Episode {episode}, Reward: {episode_reward}")
+        if episode % 100 == 0:
+            checkpoint = {
+                "episode": episode,
+                "actor": td3.actor.state_dict(),
+                "critic": td3.critic.state_dict(),
+                "actor_target": td3.actor_target.state_dict(),
+                "critic_target": td3.critic_target.state_dict(),
+                "replay_buffer": replay_buffer,
+            }
+            torch.save(checkpoint, model_filename)
+            print(f"Model saved at episode {episode}")
 
 
 if __name__ == "__main__":

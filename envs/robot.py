@@ -198,6 +198,15 @@ class RobotBase(object):
         """
         self.open_gripper()
 
+    def get_joint_angles(self):
+        joint_angles = []
+        for joint_id in self.arm_controllable_joints:
+            joint_state = p.getJointState(self.id, joint_id)
+
+            joint_angles.append(joint_state[0])
+
+        return joint_angles
+
     def open_gripper(self):
         """
         Open the gripper to its maximum opening.
@@ -245,13 +254,12 @@ class RobotBase(object):
         elif control_method == "joint":
             assert len(action) == self.arm_num_dofs
             joint_poses = action
-        # arm
         for i, joint_id in enumerate(self.arm_controllable_joints):
             p.setJointMotorControl2(
                 self.id,
                 joint_id,
-                p.POSITION_CONTROL,
-                joint_poses[i],
+                p.VELOCITY_CONTROL,
+                targetVelocity=joint_poses[i],
                 force=self.joints[joint_id].maxForce,
                 maxVelocity=self.joints[joint_id].maxVelocity,
             )
@@ -400,14 +408,14 @@ class UR5Robotiq85(RobotBase):
         gripper_state = p.getJointState(self.id, self.mimic_parent_id)
         return gripper_state[0]
 
-    def get_joint_obs(self):
-        joint_obs = []
-        for joint in self.joints:
-            joint_state = p.getJointState(self.id, joint.id)
-            joint_position = joint_state[0]
-            joint_velocity = joint_state[1]
-            joint_obs.append((joint_position, joint_velocity))
-        return joint_obs
+    # def get_joint_obs(self):
+    #     joint_obs = []
+    #     for joint in self.joints:
+    #         joint_state = p.getJointState(self.id, joint.id)
+    #         joint_position = joint_state[0]
+    #         joint_velocity = joint_state[1]
+    #         joint_obs.append((joint_position, joint_velocity))
+    #     return joint_obs
 
     def get_state(self):
         """

@@ -288,7 +288,7 @@ class ArmPickAndDrop:
         if not self.is_object_picked_up and self.check_object_picked_up():
             logger.info("Object picked up!")
             self.is_object_picked_up = True
-            reward += 5
+            reward += 150
 
         if (
             self.is_object_picked_up
@@ -297,16 +297,32 @@ class ArmPickAndDrop:
         ):
             logger.info("Object placed at position B!")
             self.is_object_at_position_B = True
-            reward += 100
+            reward += 1000
 
         if self.check_object_dropped():
             logger.info("Object dropped!")
-            reward -= 50
+            reward -= 150
 
         if not self.is_object_at_position_B:
-            reward -= 0.05
-
+            reward -= 0.1
+        hand_to_object_distance = self.get_hand_to_object_distance()
+        if hand_to_object_distance > 0.0025:
+            reward -= hand_to_object_distance * 0.1
+        object_to_target_distance = self.get_object_to_target_distance()
+        reward -= object_to_target_distance * 0.1
         return reward
+
+    def get_hand_to_object_distance(self):
+        hand_position = p.getJointState(self.robot.id, self.robot.mimic_parent_id)[0]
+        object_position = p.getBasePositionAndOrientation(self.boxID)[0]
+        distance = np.linalg.norm(np.array(hand_position) - np.array(object_position))
+        return distance
+
+    def get_object_to_target_distance(self):
+        object_position = p.getBasePositionAndOrientation(self.boxID)[0]
+        target_position = self.target_position_B
+        distance = np.linalg.norm(np.array(object_position) - np.array(target_position))
+        return distance
 
     def get_observation(self):
         """
@@ -318,22 +334,14 @@ class ArmPickAndDrop:
         Returns:
         - numpy.ndarray: Flattened array combining all observation data.
         """
-        obs = dict()
+        obs = []
 
-        if isinstance(self.camera, Camera):
-            rgb, depth, seg = self.camera.shot()
-            obs.update(
-                dict(rgb=rgb.flatten(), depth=depth.flatten(), seg=seg.flatten())
-            )
-        else:
-            assert self.camera is None
+        obs.extend(self.robot.get_joint_angles())
+        obs.extend(list(p.getBasePositionAndOrientation(self.boxID)[0]))
+        obs.extend([self.get_hand_to_object_distance()])
+        obs.extend([self.get_object_to_target_distance()])
 
-        robot_obs = self.robot.get_joint_obs()
-        if isinstance(robot_obs, dict):
-            for value in robot_obs.values():
-                obs.extend(np.array(value).flatten())
-
-        observation_array = np.concatenate(list(obs.values()), axis=0)
+        observation_array = np.array(obs)
 
         return observation_array
 
