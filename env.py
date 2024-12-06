@@ -48,11 +48,11 @@ class ClutteredPushGrasp:
         )
 
         self.boxID = p.loadURDF(
-            "./urdf/skew-box-button.urdf",
+            "assets/urdf/block.urdf",
             [0.0, 0.0, 0.0],
             # p.getQuaternionFromEuler([0, 1.5706453, 0]),
             p.getQuaternionFromEuler([0, 0, 0]),
-            useFixedBase=True,
+            useFixedBase=False,
             flags=p.URDF_MERGE_FIXED_LINKS | p.URDF_USE_SELF_COLLISION,
         )
 
@@ -150,19 +150,19 @@ class ClutteredPushGrasp:
         - reward (int): Task reward (1 if the task is completed, 0 otherwise).
         """
         reward = 0
-        if not self.box_opened:
-            if p.getJointState(self.boxID, 1)[0] > 1.9:
-                self.box_opened = True
-                logger.info("Box opened!")
-        elif not self.btn_pressed:
-            if p.getJointState(self.boxID, 0)[0] < -0.02:
-                self.btn_pressed = True
-                logger.info("Btn pressed!")
-        else:
-            if p.getJointState(self.boxID, 1)[0] < 0.1:
-                logger.info("Box closed!")
-                self.box_closed = True
-                reward = 1
+        # if not self.box_opened:
+        #     if p.getJointState(self.boxID, 1)[0] > 1.9:
+        #         self.box_opened = True
+        #         logger.info("Box opened!")
+        # elif not self.btn_pressed:
+        #     if p.getJointState(self.boxID, 0)[0] < -0.02:
+        #         self.btn_pressed = True
+        #         logger.info("Btn pressed!")
+        # else:
+        #     if p.getJointState(self.boxID, 1)[0] < 0.1:
+        #         logger.info("Box closed!")
+        #         self.box_closed = True
+        #         reward = 1
         return reward
 
     def get_observation(self):
@@ -191,7 +191,7 @@ class ClutteredPushGrasp:
         """
         Reset the box to its initial state.
 
-        Ensures that the box's joints are controlled to their default positions.
+        Resets the position and orientation of the box to its initial values.
 
         Parameters:
         - None
@@ -199,8 +199,11 @@ class ClutteredPushGrasp:
         Returns:
         - None
         """
-        p.setJointMotorControl2(self.boxID, 0, p.POSITION_CONTROL, force=1)
-        p.setJointMotorControl2(self.boxID, 1, p.VELOCITY_CONTROL, force=0)
+        initial_position = [0.0, 0.0, 0.0]
+        initial_orientation = p.getQuaternionFromEuler([0, 0, 0])
+        p.resetBasePositionAndOrientation(
+            self.boxID, initial_position, initial_orientation
+        )
 
     def reset(self):
         """

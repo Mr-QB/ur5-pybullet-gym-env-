@@ -13,7 +13,7 @@ import math
 
 def user_control_demo():
     ycb_models = YCBModels(
-        os.path.join("./data/ycb", "**", "textured-decmp.obj"),
+        os.path.join("./ddata/ycb", "**", "textured-decmp.obj"),
     )
     camera = Camera((1, 1, 1), (0, 0, 0), (0, 0, 1), 0.1, 5, (320, 320), 40)
     camera = None

@@ -200,7 +200,7 @@ class Panda(RobotBase):
         self.arm_num_dofs = 7
         self.arm_rest_poses = [0.98, 0.458, 0.31, -2.24, -0.30, 2.66, 2.32]
         self.id = p.loadURDF(
-            "./urdf/panda.urdf",
+            "./assets/urdf/panda.urdf",
             self.base_pos,
             self.base_ori,
             useFixedBase=True,
@@ -241,7 +241,7 @@ class UR5Robotiq85(RobotBase):
             0.0009377758247187636,
         ]
         self.id = p.loadURDF(
-            "./urdf/ur5_robotiq_85.urdf",
+            "./assets/urdf/ur5_robotiq_85.urdf",
             self.base_pos,
             self.base_ori,
             useFixedBase=True,
@@ -315,7 +315,7 @@ class UR5Robotiq140(UR5Robotiq85):
             0.0009377758247187636,
         ]
         self.id = p.loadURDF(
-            "./urdf/ur5_robotiq_140.urdf",
+            "./assets/urdf/ur5_robotiq_140.urdf",
             self.base_pos,
             self.base_ori,
             useFixedBase=True,
