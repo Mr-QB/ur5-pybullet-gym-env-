@@ -1,7 +1,8 @@
 import pybullet as p
 import math
 from collections import namedtuple
-from utilities import logger
+from helper.utilities import logger
+import numpy as np
 
 
 class RobotBase(object):
@@ -300,6 +301,40 @@ class UR5Robotiq85(RobotBase):
             force=self.joints[self.mimic_parent_id].maxForce,
             maxVelocity=self.joints[self.mimic_parent_id].maxVelocity,
         )
+
+    def get_gripper_state(self):
+        gripper_state = p.getJointState(self.id, self.mimic_parent_id)
+        return gripper_state[0]
+
+    def get_joint_obs(self):
+        joint_obs = []
+        for joint in self.joints:
+            joint_state = p.getJointState(self.id, joint.id)
+            joint_position = joint_state[0]
+            joint_velocity = joint_state[1]
+            joint_obs.append((joint_position, joint_velocity))
+        return joint_obs
+
+    def get_state(self):
+        """
+        Returns the current state of the robot. This could include joint positions,
+        joint velocities, and the position of the end-effector.
+        """
+        joint_state = self.get_joint_obs()
+        state = (
+            joint_state["positions"]
+            + joint_state["velocities"]
+            + list(joint_state["ee_pos"])
+        )
+        return np.array(state)
+
+    def get_action_space(self):
+        """
+        Returns the dimension of the action space.
+        In this case, let's assume the action space consists of the joint torques
+        for each controllable joint in the robot.
+        """
+        return len(self.controllable_joints)
 
 
 class UR5Robotiq140(UR5Robotiq85):
