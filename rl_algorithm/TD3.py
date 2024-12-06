@@ -23,7 +23,17 @@ class ReplayBuffer:
         self.buffer.append((state, action, next_state, reward, done))
 
     def sample(self, batch_size):
-        return zip(*random.sample(self.buffer, batch_size))
+        batch = random.sample(self.buffer, batch_size)
+
+        state, action, next_state, reward, done = zip(*batch)
+
+        state = torch.stack(state)
+        action = torch.stack(action)
+        next_state = torch.stack(next_state)
+        reward = torch.stack(reward)
+        done = torch.stack(done)
+
+        return state, action, next_state, reward, done
 
     def __len__(self):
         return len(self.buffer)
@@ -111,7 +121,6 @@ class TD3(object):
         self.total_it = 0
 
     def select_action(self, state):
-        state = torch.FloatTensor(state.reshape(1, -1)).to(device)
         return self.actor(state).cpu().data.numpy().flatten()
 
     def train(self, replay_buffer, batch_size=256):
@@ -119,7 +128,6 @@ class TD3(object):
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = replay_buffer.sample(batch_size)
-
         with torch.no_grad():
             # Select action according to policy and add clipped noise
             noise = (torch.randn_like(action) * self.policy_noise).clamp(

@@ -304,7 +304,6 @@ class ArmPickAndDrop:
             reward -= 50
 
         if not self.is_object_at_position_B:
-            logger.info("Object not placed at position B!")
             reward -= 0.05
 
         return reward
@@ -313,23 +312,30 @@ class ArmPickAndDrop:
         """
         Collect the current state of the environment and robot.
 
-        If a camera is available, captures RGB, depth, and segmentation images. Also retrieves the robot's joint states.
-
-        Parameters:
-        - None
+        Captures RGB, depth, and segmentation images if a camera is available,
+        and retrieves the robot's joint states.
 
         Returns:
-        - observation (dict): Contains camera data (if available) and robot joint observations.
+        - numpy.ndarray: Flattened array combining all observation data.
         """
         obs = dict()
+
         if isinstance(self.camera, Camera):
             rgb, depth, seg = self.camera.shot()
-            obs.update(dict(rgb=rgb, depth=depth, seg=seg))
+            obs.update(
+                dict(rgb=rgb.flatten(), depth=depth.flatten(), seg=seg.flatten())
+            )
         else:
             assert self.camera is None
-        obs.update(self.robot.get_joint_obs())
 
-        return obs
+        robot_obs = self.robot.get_joint_obs()
+        if isinstance(robot_obs, dict):
+            for value in robot_obs.values():
+                obs.extend(np.array(value).flatten())
+
+        observation_array = np.concatenate(list(obs.values()), axis=0)
+
+        return observation_array
 
     def check_task_done(self):
         """

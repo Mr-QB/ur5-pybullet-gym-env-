@@ -39,17 +39,49 @@ class RobotBase(object):
         self.base_ori = p.getQuaternionFromEuler(ori)
 
     def load(self):
+        """
+        Loads the robot model by initializing robot components and parsing joint info.
+
+        This method is intended to be called after the robot is created to initialize
+        all necessary components and configurations.
+
+        Raises:
+            NotImplementedError: If the method is not overridden in a subclass.
+        """
         self.__init_robot__()
         self.__parse_joint_info__()
         self.__post_load__()
         logger.info(self.joints)
 
     def step_simulation(self):
+        """
+        Step the simulation forward.
+
+        This method should be overridden by a specific robot class to define the
+        behavior for stepping the simulation.
+
+        Raises:
+            RuntimeError: If the method is not overridden by the subclass.
+        """
         raise RuntimeError(
             "`step_simulation` method of RobotBase Class should be hooked by the environment."
         )
 
     def __parse_joint_info__(self):
+        """
+        Parse joint information and store it in the robot.
+
+        This method retrieves joint information from the robot, including joint types,
+        limits, forces, and velocities. It also determines which joints are controllable.
+
+        It updates the following attributes:
+            - joints
+            - controllable_joints
+            - arm_controllable_joints
+            - arm_lower_limits
+            - arm_upper_limits
+            - arm_joint_ranges
+        """
         numJoints = p.getNumJoints(self.id)
         jointInfo = namedtuple(
             "jointInfo",
@@ -117,18 +149,37 @@ class RobotBase(object):
         ][: self.arm_num_dofs]
 
     def __init_robot__(self):
+        """
+        Initialize the robot. This method must be implemented by a subclass.
+
+        Raises:
+            NotImplementedError: If this method is not implemented in the subclass.
+        """
         raise NotImplementedError
 
     def __post_load__(self):
+        """
+        Perform post-load actions after loading the robot model.
+
+        This method can be overridden by subclasses to perform additional setup or configuration.
+        """
         pass
 
     def reset(self):
+        """
+        Reset the robot's arm and gripper to their initial positions.
+
+        This will call the `reset_arm` and `reset_gripper` methods to return the robot
+        to its default configuration.
+        """
         self.reset_arm()
         self.reset_gripper()
 
     def reset_arm(self):
         """
-        reset to rest poses
+        Reset the arm to its rest positions.
+
+        This method sets each joint of the arm to its predefined rest position.
         """
         for rest_pose, joint_id in zip(
             self.arm_rest_poses, self.arm_controllable_joints
@@ -140,15 +191,41 @@ class RobotBase(object):
             self.step_simulation()
 
     def reset_gripper(self):
+        """
+        Reset the gripper to its open position.
+
+        This calls the `open_gripper` method to set the gripper to its maximum open length.
+        """
         self.open_gripper()
 
     def open_gripper(self):
+        """
+        Open the gripper to its maximum opening.
+
+        This method calls `move_gripper` with the maximum value of the gripper range.
+        """
         self.move_gripper(self.gripper_range[1])
 
     def close_gripper(self):
+        """
+        Close the gripper to its minimum opening.
+
+        This method calls `move_gripper` with the minimum value of the gripper range.
+        """
         self.move_gripper(self.gripper_range[0])
 
     def move_ee(self, action, control_method):
+        """
+        Move the End-Effector (EE) to a new position.
+
+        Args:
+            action (list or tuple): The action specifying the target position.
+                - If `control_method` is "end", `action` should be [x, y, z, roll, pitch, yaw].
+                - If `control_method` is "joint", `action` should be a list of joint positions.
+            control_method (str): The control method used to move the EE. It can be either:
+                - "end": Move the EE using Inverse Kinematics (IK).
+                - "joint": Move the EE by directly controlling the joints.
+        """
         assert control_method in ("joint", "end")
         if control_method == "end":
             x, y, z, roll, pitch, yaw = action
@@ -180,9 +257,26 @@ class RobotBase(object):
             )
 
     def move_gripper(self, open_length):
+        """
+        Move the gripper to the specified opening length.
+
+        Args:
+            open_length (float): The target opening length for the gripper.
+        """
         raise NotImplementedError
 
     def get_joint_obs(self):
+        """
+        Get the joint observations of the robot, including the positions and velocities
+        of all controllable joints and the position of the end-effector.
+
+        Returns:
+            dict: A dictionary containing:
+                - positions (list): A list of joint positions for all controllable joints.
+                - velocities (list): A list of joint velocities for all controllable joints.
+                - ee_pos (tuple): A tuple representing the position of the end-effector (EE)
+                  in the world frame (x, y, z).
+        """
         positions = []
         velocities = []
         for joint_id in self.controllable_joints:
@@ -289,9 +383,9 @@ class UR5Robotiq85(RobotBase):
 
     def move_gripper(self, open_length):
         # open_length = np.clip(open_length, *self.gripper_range)
-        open_angle = 0.715 - math.asin(
-            (open_length - 0.010) / 0.1143
-        )  # angle calculation
+        normalized_length = (open_length - 0.010) / 0.1143
+        normalized_length = np.clip(normalized_length, -1, 1)
+        open_angle = 0.715 - math.asin(normalized_length)  # angle calculation
         # Control the mimic gripper joint(s)
         p.setJointMotorControl2(
             self.id,
@@ -334,7 +428,8 @@ class UR5Robotiq85(RobotBase):
         In this case, let's assume the action space consists of the joint torques
         for each controllable joint in the robot.
         """
-        return len(self.controllable_joints)
+        print(self.controllable_joints)
+        return len(self.controllable_joints) + 1
 
 
 class UR5Robotiq140(UR5Robotiq85):

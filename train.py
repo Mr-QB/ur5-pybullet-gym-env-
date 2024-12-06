@@ -1,12 +1,14 @@
 import os
-
+import torch
 import numpy as np
 import pybullet as p
 
 from envs.ArmPickAndDrop import ArmPickAndDrop
 from envs.robot import UR5Robotiq85
 from helper.utilities import YCBModels, Camera
-from rl_algorithm import TD3, ReplayBuffer
+from rl_algorithm.TD3 import TD3, ReplayBuffer
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def td3_trainning():
@@ -22,12 +24,12 @@ def td3_trainning():
 
     state = env.reset()
     state_dim = len(state)
-    action_dim = robot.get_action_space()
+    action_dim = 7  # robot.get_action_space()
     max_action = 1.0
     td3 = TD3(state_dim=state_dim, action_dim=action_dim, max_action=max_action)
     num_episodes = 1000
     replay_buffer = ReplayBuffer()
-    batch_size = 64
+    batch_size = 256
 
     for episode in range(num_episodes):
         state = env.reset()
@@ -35,11 +37,18 @@ def td3_trainning():
         done = False
 
         while not done:
-            action = td3.select_action(state)
+            action = td3.select_action(
+                torch.tensor(state, dtype=torch.float32, device=device)
+            )
 
             next_state, reward, done, info = env.step(action)
-
-            replay_buffer.add(state, action, next_state, reward, done)
+            replay_buffer.add(
+                torch.tensor(state, dtype=torch.float32, device=device),
+                torch.tensor(action, dtype=torch.float32, device=device),
+                torch.tensor(next_state, dtype=torch.float32, device=device),
+                torch.tensor(reward, dtype=torch.float32, device=device),
+                torch.tensor(done, dtype=torch.float32, device=device),
+            )
 
             if len(replay_buffer) > batch_size:
                 td3.train(replay_buffer, batch_size)
